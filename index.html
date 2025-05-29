@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TALKNTALK: Análise Estratégica Interativa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Visualization & Content Choices: 
+        - Competitive Landscape: HTML tables and card layouts for presenting competitor data. Goal: Inform & Compare. Interaction: Tabs for filtering. Justification: Clear and structured presentation of dense information.
+        - Opportunity Gaps: Expandable HTML sections. Goal: Inform & Detail. Interaction: Click to expand/collapse. Justification: Manages information density, allowing users to focus on specific gaps.
+        - Prioritized Actions: HTML table for summaries, Chart.js Horizontal Bar Chart for Impact/Feasibility scores. Goal: Recommend & Justify. Interaction: Table rows link to detailed rationale, chart provides quick visual comparison. Justification: Table gives overview, chart highlights key metrics visually. Chart.js chosen for simplicity and effectiveness for this type of data.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. 
+    -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FFF8F0; /* Warm Beige */
+        }
+        .nav-link {
+            @apply px-4 py-2 text-sm font-medium text-stone-700 hover:text-orange-600 transition-colors duration-150;
+        }
+        .nav-link.active {
+            @apply text-orange-600 border-b-2 border-orange-600;
+        }
+        .section-title {
+            @apply text-3xl font-bold text-stone-800 mb-6 text-center;
+        }
+        .subsection-title {
+            @apply text-2xl font-semibold text-stone-700 mb-4 mt-6;
+        }
+        .card {
+            @apply bg-white p-6 rounded-lg shadow-lg transition-all duration-300 hover:shadow-xl;
+        }
+        .tab-button {
+            @apply px-6 py-2 text-sm font-medium rounded-md transition-all duration-150;
+        }
+        .tab-button.active {
+            @apply bg-orange-500 text-white shadow-md;
+        }
+        .tab-button:not(.active) {
+            @apply bg-amber-100 text-orange-700 hover:bg-amber-200;
+        }
+        .details-summary {
+            @apply cursor-pointer font-semibold text-lg text-stone-700 hover:text-orange-600 py-2;
+        }
+        .details-content {
+            @apply mt-2 text-stone-600 prose prose-sm max-w-none;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px; /* Max width for better readability on large screens */
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px; /* Base height */
+            max-height: 400px; /* Max height */
+        }
+        @media (min-width: 768px) { /* md breakpoint */
+            .chart-container {
+                height: 400px;
+            }
+        }
+        h1, h2, h3, h4, h5, h6 {
+            color: #4A3B31; /* Dark Stone for headings */
+        }
+        .prose {
+             color: #5C524D; /* Lighter Stone for prose */
+        }
+        .prose strong {
+            color: #4A3B31;
+        }
+        .table-responsive {
+            @apply overflow-x-auto;
+        }
+        table {
+            @apply min-w-full divide-y divide-stone-200;
+        }
+        th {
+            @apply px-4 py-3 text-left text-xs font-semibold text-stone-600 uppercase tracking-wider bg-amber-50;
+        }
+        td {
+            @apply px-4 py-3 whitespace-nowrap text-sm text-stone-700;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #FFFDFB; /* Very light beige for even rows */
+        }
+    </style>
+</head>
+<body class="text-stone-700">
+
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <img src="images/tntlogo.jpg" alt="TALKNTALK Logo" class="w-8 h-8 object-contain">
+                    <span class="ml-2 text-xl font-bold text-stone-800">TALKNTALK</span>
+                </div>
+                <nav class="hidden md:flex items-center">
+                    <a href="#overview" class="nav-link active">Visão Geral</a>
+                    <span class="text-stone-400 select-none mx-1">•</span>
+                    <a href="#competitive-landscape" class="nav-link">Cenário Competitivo</a>
+                    <span class="text-stone-400 select-none mx-1">•</span>
+                    <a href="#opportunity-gaps" class="nav-link">Oportunidades</a>
+                    <span class="text-stone-400 select-none mx-1">•</span>
+                    <a href="#prioritized-actions" class="nav-link">Ações Prioritárias</a>
+                </nav>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="text-stone-700 hover:text-orange-600 focus:outline-none">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="mobile-menu" class="md:hidden hidden bg-white shadow-lg">
+            <a href="#overview" class="block px-4 py-3 text-sm text-stone-700 hover:bg-amber-50 hover:text-orange-600">Visão Geral</a>
+            <a href="#competitive-landscape" class="block px-4 py-3 text-sm text-stone-700 hover:bg-amber-50 hover:text-orange-600">Cenário Competitivo</a>
+            <a href="#opportunity-gaps" class="block px-4 py-3 text-sm text-stone-700 hover:bg-amber-50 hover:text-orange-600">Oportunidades</a>
+            <a href="#prioritized-actions" class="block px-4 py-3 text-sm text-stone-700 hover:bg-amber-50 hover:text-orange-600">Ações Prioritárias</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <section id="overview" class="py-12">
+            <p class="text-center text-lg text-stone-600 max-w-3xl mx-auto mb-8">
+                Bem-vindo à análise interativa das alavancas de crescimento estratégico para a TALKNTALK. Este painel explora o cenário competitivo, identifica lacunas de oportunidade e prioriza ações para impulsionar o crescimento e a lucratividade da TALKNTALK no dinâmico mercado brasileiro de aprendizado de idiomas online.
+            </p>
+             <div class="bg-white p-6 rounded-lg shadow-md text-center mt-8">
+                <h3 class="text-xl font-semibold text-stone-700 mb-2">Foco da TALKNTALK</h3>
+                <p class="text-stone-600">Plataforma online de imersão linguística focada em fluência conversacional, com sessões de conversação em grupo guiadas por 'Hosts'.</p>
+                <h3 class="text-xl font-semibold text-stone-700 mt-4 mb-2">Desafios Atuais</h3>
+                <p class="text-stone-600">Crescimento de usuários em desaceleração, aumento do Custo de Aquisição de Clientes (CAC), necessidade de melhor gestão da comunidade.</p>
+            </div>
+        </section>
+
+        <section id="competitive-landscape" class="py-12 bg-amber-50 rounded-xl my-8 p-4 md:p-8">
+            <h2 class="section-title">Cenário Competitivo</h2>
+            <p class="text-center text-stone-600 max-w-3xl mx-auto mb-8">
+                O mercado brasileiro de aprendizado de idiomas online é dinâmico. Esta seção detalha os principais concorrentes diretos (liderados por humanos ou híbridos) e os disruptores adjacentes (focados em IA), fornecendo insights sobre seus posicionamentos, preços e movimentos estratégicos.
+            </p>
+
+            <div class="flex justify-center items-center mb-8">
+                <button class="tab-button active" data-tab="direct-competitors">Concorrentes Diretos</button>
+                <span class="text-stone-400 select-none mx-2">•</span>
+                <button class="tab-button" data-tab="ai-disruptors">Disruptores de IA</button>
+            </div>
+
+            <div id="direct-competitors" class="tab-content grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            <div id="ai-disruptors" class="tab-content grid grid-cols-1 md:grid-cols-2 gap-6 hidden"></div>
+            
+            <h3 class="subsection-title text-center mt-12">Panorama Competitivo: Plataformas de Conversação Online no Brasil</h3>
+            <div class="card mt-6 table-responsive">
+                <table id="competitive-snapshot-table" class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th>Concorrente</th>
+                            <th>Modelo</th>
+                            <th>Foco Principal</th>
+                            <th>Preço Entrada (Mensal BRL equiv.)</th>
+                            <th>Diferencial Chave</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <h3 class="subsection-title text-center mt-12">Principais Observações do Cenário Competitivo</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div class="card">
+                    <h4 class="font-semibold text-lg text-orange-700 mb-2">Intensificação da Competição</h4>
+                    <p>Entrada de grandes players globais e startups de IA bem financiadas aumenta a pressão sobre o CAC.</p>
+                </div>
+                <div class="card">
+                    <h4 class="font-semibold text-lg text-orange-700 mb-2">Ascensão da IA</h4>
+                    <p>Plataformas de IA maduras oferecem propostas de valor atraentes (custo, disponibilidade 24/7, feedback personalizado).</p>
+                </div>
+                <div class="card">
+                    <h4 class="font-semibold text-lg text-orange-700 mb-2">Diversidade de Preços e Modelos</h4>
+                    <p>Amplo espectro de modelos (freemium, assinatura, pay-per-lesson) desafia o modelo atual da TALKNTALK.</p>
+                </div>
+                <div class="card">
+                    <h4 class="font-semibold text-lg text-orange-700 mb-2">Diferenciação Crucial</h4>
+                    <p>A entrega da prática de conversação e resultados mensuráveis são chave. Ativos da TALKNTALK (Hosts, comunidade, ambiente seguro) precisam ser fortalecidos.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="opportunity-gaps" class="py-12">
+            <h2 class="section-title">Oportunidades de Crescimento Não Exploradas</h2>
+            <p class="text-center text-stone-600 max-w-3xl mx-auto mb-10">
+                A análise comparativa revela diversas alavancas de crescimento e lucratividade de alto impacto que a TALKNTALK pode explorar para enfrentar seus desafios atuais e capitalizar sobre as dinâmicas do mercado.
+            </p>
+            <div id="opportunity-gaps-content" class="space-y-6"></div>
+        </section>
+
+        <section id="prioritized-actions" class="py-12 bg-amber-50 rounded-xl my-8 p-4 md:p-8">
+            <h2 class="section-title">Ações Prioritárias Recomendadas</h2>
+            <p class="text-center text-stone-600 max-w-3xl mx-auto mb-10">
+                Para enfrentar os desafios atuais e capitalizar as oportunidades de mercado, são recomendadas as seguintes três ações estratégicas, priorizadas com base no seu Potencial de Impacto e Viabilidade.
+            </p>
+            
+            <h3 class="subsection-title text-center">Visualização de Impacto x Viabilidade</h3>
+            <div class="card my-8">
+                 <div class="chart-container">
+                    <canvas id="prioritizedActionsChart"></canvas>
+                </div>
+            </div>
+
+            <h3 class="subsection-title text-center">Alavancas Estratégicas Priorizadas para TALKNTALK</h3>
+            <div class="card mt-6 table-responsive">
+                <table id="prioritized-actions-table" class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th>Ação Recomendada</th>
+                            <th>Impacto (1-5)</th>
+                            <th>Viabilidade (1-5)</th>
+                            <th>Pontuação (Impacto x Viabilidade)</th>
+                            <th>Detalhes</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="prioritized-actions-rationale" class="mt-10 space-y-6"></div>
+        </section>
+    </main>
+
+    <footer class="bg-stone-800 text-amber-50 py-8 text-center">
+        <p>&copy; <span id="currentYear"></span> TALKNTALK: Análise Estratégica Interativa. Todos os direitos reservados.</p>
+        <p class="text-xs mt-1">Desenvolvido para fins de análise e demonstração.</p>
+    </footer>
+
+    <script>
+        const competitorsData = {
+            direct: [
+                { name: "Native Camp", position: "Plataforma japonesa de conversação em inglês com aulas ilimitadas 1-a-1, 24/7.", price: "R$309/mês (Premium)", features: "Aulas 1-a-1 ilimitadas, tutores nativos/não nativos, Método Callan, materiais gratuitos, teste de fala com IA.", move: "Lançamento no Brasil (Maio 2025).", implication: "Desafio direto ao valor das sessões em grupo da TALKNTALK com modelo agressivo de aulas 1-a-1 ilimitadas." },
+                { name: "Italki", position: "Marketplace global conectando alunos a professores para aulas 1-a-1.", price: "Variável (professor define, $5-$40/hora)", features: "Aulas 1-a-1, escolha de professores profissionais/comunitários, ferramentas no app, comunidade global.", move: "Expansão contínua global.", implication: "Alternativa altamente personalizada, flexível com modelo pay-as-you-go." },
+                { name: "Cambly", position: "Acesso sob demanda a tutores nativos de inglês para prática de conversação 1-a-1, 24/7.", price: "R$178-R$275+/mês (varia)", features: "Acesso instantâneo a tutores nativos, aulas privadas/grupo, agendamento flexível.", move: "Operações globais contínuas.", implication: "Concorre em acesso imediato a nativos para prática 1-a-1." },
+                { name: "Open English", position: "Plataforma dominante na América Latina, aulas ao vivo 24/7 com professores nativos.", price: "R$285+/mês (contatar para cotação)", features: "Aulas ao vivo em grupo/privadas 24/7, metodologia própria, ferramenta de reconhecimento de voz, IA Jenny.", move: "Integrou assistente de IA 'Jenny'.", implication: "Concorrente de peso com marca forte, oferta ampla e incursão em IA." },
+                { name: "Fluencypass", position: "Plataforma brasileira com ciclo completo (teoria, conversação, intercâmbio).", price: "R$149 (Básico) - R$247 (Prof. c/ conversação)", features: "Sessões de conversação em grupo ilimitadas (planos Prof/Premium), aulas com nativos.", move: "Adaptando-se a impactos cambiais no componente de intercâmbio.", implication: "Concorrente local com oferta única de intercâmbio, mas com volatilidade nesse diferencial." }
+            ],
+            ai: [
+                { name: "Langotalk", position: "Foco em acelerar aquisição e reduzir ansiedade com tutores de IA.", price: "Freemium; Pago ~$35/mês (de $6.67/ano)", features: "Tutores de IA, feedback em tempo real, lições personalizadas, Roleplay Pal, gamificação.", move: "Novos cursos focados em fala (Maio 2025).", implication: "Alternativa de IA acessível e de baixo custo com modelo freemium potente." },
+                { name: "Speak.com (Speak)", position: "Tutor de IA mais avançado do mundo, prática conversacional real sem tutor ao vivo.", price: "~$95/mês (de $17.99 USD)", features: "Tutor de IA 24/7, currículo personalizado, feedback instantâneo, simula cenários reais, baixa latência.", move: "Série C de $78M, avaliação de $1B, planos de expansão global 2025.", implication: "Concorrente de IA sofisticado, fortemente financiado e com apoio da OpenAI, uma força competitiva séria a longo prazo." },
+                { name: "ELSA Speak (Opcional)", position: "Coach de IA focado em pronúncia e confiança na fala em inglês.", price: "Freemium; Pro varia", features: "Cenários de fala em tempo real, jogos interativos com IA, mais de 8.000 lições (pronúncia, gramática, vocabulário).", move: "Atualizações contínuas de app.", implication: "Demonstra como a IA pode visar dores específicas; modelo freemium atrativo." }
+            ]
+        };
+
+        const competitiveSnapshotData = [
+            { competitor: "TALKNTALK", model: "Humano (Hosts)", focus: "Conversa em Grupo, Fluência, Confiança", price: "R$29-R$83", differentiator: "Comunidade, Ambiente Seguro, Guiado por Host" },
+            { competitor: "Native Camp", model: "Humano (Tutores)", focus: "Conversa 1-a-1 Inglês, Aulas Ilimitadas", price: "R$309", differentiator: "24/7 Ilimitado 1-a-1, Tutores Nativos, Método Callan" },
+            { competitor: "Italki", model: "Humano (Tutores)", focus: "Aulas 1-a-1, Marketplace de Professores", price: "Variável", differentiator: "Escolha de Tutores, Pay-per-lesson, Troca Comunitária" },
+            { competitor: "Cambly", model: "Humano (Tutores)", focus: "Conversa 1-a-1 & Grupo Inglês, Sob Demanda", price: "R$178-R$275+", differentiator: "Acesso 24/7 a Nativos, Flexibilidade" },
+            { competitor: "Open English", model: "Humano (Tutores) + IA", focus: "Aprendizado Abrangente de Inglês, Aulas Ao Vivo", price: "R$285+", differentiator: "Marca Forte LatAm, Aulas Ao Vivo 24/7, Oferta Adulto/Criança/Empresas" },
+            { competitor: "Fluencypass", model: "Humano (Tutores)", focus: "Aprendizado de Inglês + Programa de Intercâmbio", price: "R$149-R$247", differentiator: "Programa de Intercâmbio Agregado, Plataforma Local Brasileira" },
+            { competitor: "Langotalk", model: "IA", focus: "Prática de Conversação com IA, Feedback Personalizado", price: "Freemium; ~$35", differentiator: "Tutores de IA, Feedback Instantâneo, Lições Personalizadas, Freemium" },
+            { competitor: "Speak.com", model: "IA", focus: "Prática Avançada de Conversação com IA", price: "~$95", differentiator: "Tutor de IA Altamente Avançado, Foco em Falar desde o Dia 1, Forte Apoio VC (OpenAI)" },
+            { competitor: "ELSA Speak", model: "IA", focus: "Pronúncia em Inglês & Confiança na Fala", price: "Freemium", differentiator: "Coach de Pronúncia IA, Foco em Preparação para Exames" }
+        ];
+
+        const opportunityGapsData = [
+            { title: "1. Introduzir Ferramentas Suplementares de IA & Assistência para Hosts", currentStance: "Modelo puramente humano.", untapped: "Usar IA para exercícios opcionais para alunos (preparação, vocabulário, pronúncia) e assistência para Hosts (prompts, resumos).", potentialImpact: "Melhora resultados, satisfação, engajamento; aborda escalabilidade; posiciona como 'conexão humana aprimorada por IA'." },
+            { title: "2. Diversificar Níveis de Preço & Introduzir Modelo Freemium/Entrada Facilitada", currentStance: "Pacotes fixos de horas ou plano anual ilimitado; teste limitado.", untapped: "Nível Freemium (ex: 1-2 sessões/mês, acesso a ferramentas de IA); Nível de entrada pago mais baixo; Níveis premium com serviços de valor agregado.", potentialImpact: "Reduz CAC com crescimento orgânico; melhora conversão; atende a mais segmentos; aumenta ARPU/LTV." },
+            { title: "3. Implementar Engajamento Comunitário Avançado & Mecânicas de Gamificação", currentStance: "Ênfase na comunidade; busca por melhoria na gestão.", untapped: "Gamificação (pontos, emblemas, rankings); Subcomunidades estruturadas; Matching para prática entre pares; Conteúdo gerado por usuários.", potentialImpact: "Aumenta retenção com aprendizado engajador; fortalece sentimento de pertencimento; diferencial competitivo." },
+            { title: "4. Desenvolver Trilhas de Conteúdo Especializado & Imersões Temáticas", currentStance: "Temas e perguntas para guiar sessões; blog.", untapped: "Trilhas de imersão orientadas a resultados (ex: Inglês para Entrevistas, Espanhol para Viagens) com materiais curados e cenários específicos.", potentialImpact: "Atrai segmentos com necessidades específicas; justifica precificação premium; melhora resultados tangíveis e satisfação." },
+            { title: "5. Explorar Ofertas B2B para Treinamento Corporativo de Idiomas", currentStance: "Foco primário B2C.", untapped: "Pacotes B2B (sessões para equipes, foco em linguagem setorial); Ferramentas administrativas para RH; Posicionar comunidade segura para funcionários hesitantes.", potentialImpact: "Nova fonte de receita substancial; LTV potencialmente maior; diversifica base de clientes." },
+            { title: "6. Formalizar Programa 'Host como Carreira' / 'Torne-se um Host' (Bônus)", currentStance: "Indicação informal de que alunos podem se tornar facilitadores.", untapped: "Programa estruturado (critérios, seleção, treinamento padronizado, incentivos) para Hosts.", potentialImpact: "Qualidade consistente na entrega; fortalece comunidade; forma escalável de gerenciar mais usuários; diferencial: 'Aprenda conosco, depois lidere conosco'." }
+        ];
+        
+        const prioritizedActionsData = [
+            { action: "1. Diversificar Níveis de Preço & Introduzir Modelo Freemium/Trial Estratégico.", impact: 5, feasibility: 4, rationaleId: "rationale-1", nextSteps: ["Conduzir pesquisa de mercado & teste A/B de modelos freemium.", "Analisar dados de usuários para novos segmentos de níveis pagos.", "Desenvolver modelos financeiros para novos níveis & conversão freemium.", "Definir propostas de valor & conjuntos de recursos para cada nível.", "Planejar implementação técnica para gerenciamento de assinaturas."] },
+            { action: "2. Implementar Engajamento Comunitário Avançado & Mecânicas de Gamificação.", impact: 4, feasibility: 4, rationaleId: "rationale-2", nextSteps: ["Projetar sistema de gamificação (pontos, emblemas, rankings) alinhado com metas de aprendizado.", "Planejar recursos da plataforma para gamificação & subcomunidades estruturadas.", "Desenvolver calendário de conteúdo comunitário & estratégia de engajamento.", "Explorar ferramentas para matching de prática peer-to-peer.", "Monitorar métricas chave de saúde da comunidade."] },
+            { action: "3. Introduzir Ferramentas Suplementares de IA & Assistência para Hosts (Abordagem Faseada).", impact: 5, feasibility: 3, rationaleId: "rationale-3", nextSteps: ["Identificar áreas de alto impacto para suplementação de IA (ex: preparação de vocabulário, feedback de pronúncia).", "Avaliar APIs de IA de terceiros/soluções white-label vs. construção interna.", "Pilotar um recurso inicial de IA com um pequeno grupo de usuários para feedback.", "Definir como as ferramentas de IA complementam as sessões lideradas por Hosts.", "Explorar ferramentas de IA para auxiliar Hosts (ex: resumos de participação)."] }
+        ];
+
+        const rationales = {
+            "rationale-1": { title: "1. Ação: Diversificar Níveis de Preço & Introduzir Modelo Freemium/Trial Estratégico.", importance: "Essencial para reacender o crescimento de usuários. O mercado atual possui diversos modelos de acesso, com o freemium sendo uma estratégia comprovada para aquisição em escala. Um nível freemium bem desenhado pode oferecer uma amostra do valor central da TALKNTALK, incentivando a conversão. Diversificar níveis pagos permite capturar valor de diferentes segmentos, melhorando a monetização.", implementation: "Análise de mercado para sensibilidade a preço e preferências. Testes A/B de limitações freemium. Modelagem financeira para taxas de conversão. Ajustes no sistema de gerenciamento de assinaturas." },
+            "rationale-2": { title: "2. Ação: Implementar Engajamento Comunitário Avançado & Mecânicas de Gamificação.", importance: "A comunidade é um pilar da TALKNTALK. Aprimorá-la com gamificação e engajamento estruturado fortalece um diferencial chave contra alternativas de IA. Uma comunidade vibrante fomenta lealdade, reduz churn e gera indicações orgânicas. Gamificação torna o aprendizado mais viciante e recompensador.", implementation: "Design de sistema de gamificação ligado ao progresso e comportamento positivo. O Community Manager será crucial. Desenvolvimento de plataforma para novos recursos, começando com mecânicas simples." },
+            "rationale-3": { title: "3. Ação: Introduzir Ferramentas Suplementares de IA & Assistência para Hosts (Abordagem Faseada).", importance: "A IA está mudando o aprendizado de idiomas. Para a TALKNTALK, integrar IA é sobre aumentar eficácia e escalabilidade, não substituir o modelo humano. Ferramentas de IA podem oferecer prática valiosa fora das sessões e auxiliar Hosts. Isso torna a plataforma mais competitiva e ajuda a gerenciar custos de escala.", implementation: "Abordagem faseada. Foco inicial em recursos de IA de alto impacto e fácil implementação. Parcerias com provedores de tecnologia de IA podem ser mais eficientes. Programa piloto para feedback. Comunicação clara de que a IA complementa os Hosts." }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            const navLinks = document.querySelectorAll('.nav-link, #mobile-menu a');
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    document.querySelectorAll('.nav-link, #mobile-menu a').forEach(l => l.classList.remove('active', 'font-bold'));
+                    if(link.closest('nav')) link.classList.add('active'); // For desktop
+                    if(link.closest('#mobile-menu')) { // For mobile, find corresponding desktop link
+                        const desktopLink = document.querySelector(`nav a[href="${link.getAttribute('href')}"]`);
+                        if(desktopLink) desktopLink.classList.add('active');
+                        link.classList.add('font-bold'); // Highlight mobile link
+                    }
+                    if(mobileMenu.classList.contains('hidden') === false) mobileMenu.classList.add('hidden');
+
+                    // Smooth scroll for sections
+                    const targetId = link.getAttribute('href').substring(1);
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        e.preventDefault(); // Prevent default anchor behavior only if target exists
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 70, // Adjust for sticky header height
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+            
+            window.addEventListener('scroll', () => {
+                let current = '';
+                document.querySelectorAll('section').forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 80) { // Adjusted offset for sticky header
+                        current = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    link.classList.remove('active', 'font-bold');
+                    if (link.getAttribute('href').substring(1) === current) {
+                        if(link.closest('nav')) link.classList.add('active');
+                        if(link.closest('#mobile-menu')) {
+                            const desktopLink = document.querySelector(`nav a[href="${link.getAttribute('href')}"]`);
+                            if(desktopLink) desktopLink.classList.add('active');
+                            link.classList.add('font-bold');
+                        }
+                    }
+                });
+            });
+
+
+            const directCompetitorsContainer = document.getElementById('direct-competitors');
+            const aiDisruptorsContainer = document.getElementById('ai-disruptors');
+
+            function createCompetitorCard(competitor) {
+                return `
+                    <div class="card">
+                        <h4 class="text-xl font-semibold text-orange-700 mb-2">${competitor.name}</h4>
+                        <p class="text-sm text-stone-500 mb-1"><strong>Posicionamento:</strong> ${competitor.position}</p>
+                        <p class="text-sm text-stone-500 mb-1"><strong>Preço:</strong> ${competitor.price}</p>
+                        <p class="text-sm text-stone-500 mb-1"><strong>Recursos Chave:</strong> ${competitor.features}</p>
+                        <p class="text-sm text-stone-500 mb-1"><strong>Movimento Recente:</strong> ${competitor.move}</p>
+                        <p class="text-sm text-stone-500 mt-2 pt-2 border-t border-amber-200"><strong>Implicação para TALKNTALK:</strong> ${competitor.implication}</p>
+                    </div>
+                `;
+            }
+
+            competitorsData.direct.forEach(comp => directCompetitorsContainer.innerHTML += createCompetitorCard(comp));
+            competitorsData.ai.forEach(comp => aiDisruptorsContainer.innerHTML += createCompetitorCard(comp));
+
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    const targetTab = button.getAttribute('data-tab');
+                    tabContents.forEach(content => {
+                        if (content.id === targetTab) {
+                            content.classList.remove('hidden');
+                        } else {
+                            content.classList.add('hidden');
+                        }
+                    });
+                });
+            });
+
+            const competitiveSnapshotTableBody = document.querySelector('#competitive-snapshot-table tbody');
+            competitiveSnapshotData.forEach(item => {
+                const row = competitiveSnapshotTableBody.insertRow();
+                row.innerHTML = `
+                    <td>${item.competitor}</td>
+                    <td>${item.model}</td>
+                    <td>${item.focus}</td>
+                    <td>${item.price}</td>
+                    <td>${item.differentiator}</td>
+                `;
+            });
+            
+            const opportunityGapsContainer = document.getElementById('opportunity-gaps-content');
+            opportunityGapsData.forEach(gap => {
+                const detailsElement = document.createElement('details');
+                detailsElement.className = 'card';
+                detailsElement.innerHTML = `
+                    <summary class="details-summary">${gap.title} <span class="float-right text-sm font-normal text-orange-500">[+]</span></summary>
+                    <div class="details-content">
+                        <p><strong>Situação Atual TALKNTALK:</strong> ${gap.currentStance}</p>
+                        <p><strong>Oportunidade Não Explorada:</strong> ${gap.untapped}</p>
+                        <p><strong>Impacto Potencial:</strong> ${gap.potentialImpact}</p>
+                    </div>
+                `;
+                detailsElement.addEventListener('toggle', function() {
+                    const summary = this.querySelector('summary span');
+                    summary.textContent = this.open ? '[-]' : '[+]';
+                });
+                opportunityGapsContainer.appendChild(detailsElement);
+            });
+
+            const prioritizedActionsTableBody = document.querySelector('#prioritized-actions-table tbody');
+            const prioritizedActionsRationaleContainer = document.getElementById('prioritized-actions-rationale');
+            
+            prioritizedActionsData.forEach(item => {
+                const row = prioritizedActionsTableBody.insertRow();
+                const score = item.impact * item.feasibility;
+                row.innerHTML = `
+                    <td class="font-medium">${item.action}</td>
+                    <td>${item.impact}</td>
+                    <td>${item.feasibility}</td>
+                    <td>${score}</td>
+                    <td><button data-rationale-id="${item.rationaleId}" class="text-orange-600 hover:underline text-sm">Ver Detalhes</button></td>
+                `;
+                row.querySelector('button').addEventListener('click', (e) => {
+                    const rationaleId = e.target.dataset.rationaleId;
+                    const rationaleElement = document.getElementById(rationaleId);
+                    if (rationaleElement) {
+                        rationaleElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        rationaleElement.classList.add('ring-2', 'ring-orange-400', 'p-4', 'rounded-md', 'shadow-lg');
+                        setTimeout(() => {
+                             rationaleElement.classList.remove('ring-2', 'ring-orange-400', 'p-4', 'rounded-md', 'shadow-lg');
+                        }, 3000);
+                    }
+                });
+
+                const rationaleData = rationales[item.rationaleId];
+                if (rationaleData) {
+                    const rationaleDiv = document.createElement('div');
+                    rationaleDiv.id = item.rationaleId;
+                    rationaleDiv.className = 'card prose prose-sm max-w-none';
+                    rationaleDiv.innerHTML = `
+                        <h4 class="text-xl font-semibold text-orange-700 mb-3">${rationaleData.title}</h4>
+                        <p><strong>Importância Estratégica:</strong> ${rationaleData.importance}</p>
+                        <p><strong>Considerações de Implementação:</strong> ${rationaleData.implementation}</p>
+                        <h5 class="font-semibold mt-3 mb-1">Próximos Passos Chave:</h5>
+                        <ul class="list-disc list-inside text-sm">
+                            ${item.nextSteps.map(step => `<li>${step}</li>`).join('')}
+                        </ul>
+                    `;
+                    prioritizedActionsRationaleContainer.appendChild(rationaleDiv);
+                }
+            });
+            
+            const ctx = document.getElementById('prioritizedActionsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: prioritizedActionsData.map(item => item.action.substring(0, item.action.indexOf('.'))), // Just the number for brevity
+                    datasets: [
+                        {
+                            label: 'Impacto',
+                            data: prioritizedActionsData.map(item => item.impact),
+                            backgroundColor: 'rgba(249, 115, 22, 0.7)', // orange-500
+                            borderColor: 'rgba(249, 115, 22, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Viabilidade',
+                            data: prioritizedActionsData.map(item => item.feasibility),
+                            backgroundColor: 'rgba(251, 191, 36, 0.7)', // amber-400
+                            borderColor: 'rgba(251, 191, 36, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Impacto x Viabilidade',
+                            data: prioritizedActionsData.map(item => item.impact * item.feasibility),
+                            backgroundColor: 'rgba(120, 113, 108, 0.7)', // stone-500
+                            borderColor: 'rgba(120, 113, 108, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 25, // Max score is 5*5=25
+                            grid: { color: 'rgba(214, 211, 209, 0.3)'}, // stone-300
+                            ticks: { color: '#57534E' } // stone-600
+                        },
+                        y: {
+                             grid: { display: false },
+                             ticks: { 
+                                color: '#57534E', // stone-600
+                                autoSkip: false, // Ensure all labels are shown
+                                callback: function(value, index, values) {
+                                    // Use full action name for Y-axis labels, wrapped
+                                    const label = prioritizedActionsData[index].action;
+                                    if (label.length > 30) { // Arbitrary length for wrapping
+                                        const words = label.split(' ');
+                                        const lines = [];
+                                        let currentLine = '';
+                                        words.forEach(word => {
+                                            if ((currentLine + word).length > 30) {
+                                                lines.push(currentLine.trim());
+                                                currentLine = '';
+                                            }
+                                            currentLine += word + ' ';
+                                        });
+                                        lines.push(currentLine.trim());
+                                        return lines;
+                                    }
+                                    return label;
+                                }
+                             }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: '#57534E' } // stone-600
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.x !== null) {
+                                        label += context.parsed.x;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+        });
+    </script>
+</body>
+</html>
